@@ -1,4 +1,4 @@
-# app.py (Marketstack Entegrasyonu - Gerçek Zamanlı BIST Veri Çekimi)
+# app.py (Marketstack Gerçek Zamanlı İntraday Veri Entegrasyonu)
 
 import streamlit as st
 import pandas as pd
@@ -16,15 +16,15 @@ st.set_page_config(
     menu_items={
         'Get help': 'mailto:destek@algotreder.com',
         'Report a bug': 'mailto:destek@algotreder.com',
-        'About': "Bu platform, Borsa İstanbul (BIST) hisseleri için yapay zeka destekli analiz ve al-sat sinyalleri sunar."
+        'About': "Bu platform, Borsa İstanbul (BIST) hisseleri için yapay zeka destekli analiz ve gerçek zamanlı al-sat sinyalleri sunar."
     }
 )
 
-st.title("📈 Algoritmik Alım-Satım ve Piyasa Tahmini Paneli")
+st.title("📈 Gerçek Zamanlı Algoritmik Alım-Satım Paneli")
 
 st.markdown("""
-Bu platform, Borsa İstanbul'daki hisse senetleri için **gerçek zamanlı API verisiyle** piyasa analizi ve al-sat sinyalleri üretir. 
-Marketstack API ile entegredir. 
+Bu platform, Marketstack API ile **gerçek zamanlı intraday (içgünlük)** veri kullanarak 
+Borsa İstanbul hisselerinde analiz ve sinyal üretimi sağlar.
 """)
 
 st.sidebar.title("⭐ Favori Hisseler")
@@ -32,11 +32,12 @@ favoriler = ["GARAN.IS", "THYAO.IS", "AKBNK.IS", "ASELS.IS", "SISE.IS"]
 favori_secim = st.sidebar.selectbox("Favori bir hisse seçin:", favoriler)
 
 hisse = st.text_input("Hisse Kodu (örn: GARAN.IS)", value=favori_secim)
-limit = st.slider("Kaç günlük veri çekilsin?", 30, 300, 100)
+limit = st.slider("Kaç veri noktası çekilsin?", 50, 500, 100)
+interval = st.selectbox("Zaman Aralığı (interval)", ["1min", "5min", "15min", "30min", "1hour"], index=1)
 
-if st.button("🔄 Veriyi Getir"):
+if st.button("🔄 Anlık Veriyi Getir"):
     try:
-        url = f"http://api.marketstack.com/v1/eod?access_key={API_KEY}&symbols={hisse}&limit={limit}"
+        url = f"https://api.marketstack.com/v1/intraday?access_key={API_KEY}&symbols={hisse}&interval={interval}&limit={limit}"
         r = requests.get(url)
         data = r.json()
 
@@ -50,11 +51,10 @@ if st.button("🔄 Veriyi Getir"):
         df.set_index("date", inplace=True)
         df.rename(columns={"close": "Fiyat", "volume": "Hacim"}, inplace=True)
 
-        df["Hareketli Ortalama 8 Gün"] = df["Fiyat"].rolling(window=8).mean()
-        df["Hareketli Ortalama 12 Gün"] = df["Fiyat"].rolling(window=12).mean()
-        df["Hareketli Ortalama 20 Gün"] = df["Fiyat"].rolling(window=20).mean()
+        df["Hareketli Ortalama 8"] = df["Fiyat"].rolling(window=8).mean()
+        df["Hareketli Ortalama 20"] = df["Fiyat"].rolling(window=20).mean()
 
-        ort_sutunlar = ["Hareketli Ortalama 8 Gün", "Hareketli Ortalama 20 Gün"]
+        ort_sutunlar = ["Hareketli Ortalama 8", "Hareketli Ortalama 20"]
         veri_clean = df.copy()
         if all(col in veri_clean.columns for col in ort_sutunlar):
             veri_clean = veri_clean.dropna(subset=ort_sutunlar)
@@ -65,41 +65,28 @@ if st.button("🔄 Veriyi Getir"):
         col1, col2 = st.columns([3, 1])
 
         with col1:
-            st.subheader("📊 Fiyat ve Hareketli Ortalama Grafiği")
-            try:
-                st.line_chart(veri_clean[["Fiyat", "Hareketli Ortalama 8 Gün", "Hareketli Ortalama 20 Gün"]])
-            except:
-                st.warning("⚠️ Grafik çizilemedi. Yeterli veri olmayabilir.")
+            st.subheader("📊 Anlık Fiyat ve Ortalamalar Grafiği")
+            st.line_chart(veri_clean[["Fiyat", "Hareketli Ortalama 8", "Hareketli Ortalama 20"]])
 
-            st.subheader("📉 Hacim (İşlem Miktarı) Grafiği")
-            try:
-                fig, ax = plt.subplots(figsize=(10, 3))
-                ax.bar(veri_clean.index, veri_clean["Hacim"], color='orange')
-                ax.set_title("Günlük Hacim")
-                ax.set_xlabel("Tarih")
-                ax.set_ylabel("Hacim")
-                st.pyplot(fig)
-            except:
-                st.warning("⚠️ Hacim grafiği çizilemedi.")
+            st.subheader("📉 İşlem Hacmi Grafiği")
+            fig, ax = plt.subplots(figsize=(10, 3))
+            ax.bar(veri_clean.index, veri_clean["Hacim"], color='orange')
+            ax.set_title("Hacim (" + interval + ")")
+            ax.set_xlabel("Zaman")
+            ax.set_ylabel("Hacim")
+            st.pyplot(fig)
 
-            st.subheader("🔍 Son 30 Günlük Veri Tablosu")
+            st.subheader("🔍 Son Veriler")
             tablo = veri_clean.tail(30).copy()
             tablo.reset_index(inplace=True)
-            tablo.rename(columns={
-                "date": "Tarih",
-                "open": "Açılış",
-                "high": "En Yüksek",
-                "low": "En Düşük",
-                "close": "Kapanış",
-                "volume": "Hacim (Ham)",
-            }, inplace=True)
+            tablo.rename(columns={"date": "Tarih"}, inplace=True)
             st.dataframe(tablo)
 
         with col2:
             if not veri_clean.empty:
                 son = veri_clean.iloc[-1]
-                ort8 = son["Hareketli Ortalama 8 Gün"]
-                ort20 = son["Hareketli Ortalama 20 Gün"]
+                ort8 = son["Hareketli Ortalama 8"]
+                ort20 = son["Hareketli Ortalama 20"]
 
                 sinyal = "BEKLE"
                 renk = "gray"
@@ -110,7 +97,7 @@ if st.button("🔄 Veriyi Getir"):
                     sinyal = "SAT"
                     renk = "red"
 
-                st.subheader("📍 Güncel Sinyal")
+                st.subheader("📍 Anlık Sinyal")
                 st.markdown(f"""
                     <div style='background-color:{renk};padding:25px;border-radius:10px;text-align:center;'>
                         <h2 style='color:white;'> {sinyal} </h2>
