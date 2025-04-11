@@ -1,4 +1,4 @@
-# app.py (Versiyon 2.4: Ekstra Grafik Eklendi - Hacim Çubuğu Grafiği)
+# app.py (Versiyon 2.4.1: Güvenli veri kontrolü eklendi)
 
 import streamlit as st
 import pandas as pd
@@ -25,12 +25,10 @@ Bu platform, Borsa İstanbul'daki hisse senetleri için **yapay zeka destekli** 
 Aşağıdan hisse senedi kodunu girerek analiz başlatabilirsiniz. Örnekler: `GARAN.IS`, `THYAO.IS`, `AKBNK.IS`
 """)
 
-# FAVORİ HİSSELER
 st.sidebar.title("⭐ Favori Hisseler")
 favoriler = ["GARAN.IS", "THYAO.IS", "AKBNK.IS", "ASELS.IS", "SISE.IS"]
 favori_secim = st.sidebar.selectbox("Favori bir hisse seçin:", favoriler)
 
-# Kullanıcıdan hisse ve tarih aralığı al
 hisse = st.text_input("Hisse Kodu (örn: GARAN.IS)", value=favori_secim)
 baslangic = st.date_input("Veri Başlangıç Tarihi", value=datetime.date(2024, 1, 1))
 bitis = st.date_input("Veri Bitiş Tarihi", value=datetime.date.today())
@@ -57,8 +55,13 @@ if st.button("🔄 Veriyi Getir"):
             veri["Hareketli Ortalama 12 Gün"] = veri["Fiyat"].rolling(window=12).mean()
             veri["Hareketli Ortalama 20 Gün"] = veri["Fiyat"].rolling(window=20).mean()
 
-            # Sadece geçerli (NaN olmayan) veriyi kullanalım
-            veri_clean = veri.dropna(subset=["Hareketli Ortalama 8 Gün", "Hareketli Ortalama 20 Gün"])
+            ort_sutunlar = ["Hareketli Ortalama 8 Gün", "Hareketli Ortalama 20 Gün"]
+            veri_clean = veri.copy()
+            if all(col in veri_clean.columns for col in ort_sutunlar):
+                veri_clean = veri_clean.dropna(subset=ort_sutunlar)
+            else:
+                st.warning("Hareketli ortalamalar hesaplanamadı. Veride eksiklik olabilir.")
+                st.stop()
 
             col1, col2 = st.columns([3, 1])
 
