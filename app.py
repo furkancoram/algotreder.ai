@@ -1,3 +1,24 @@
+# app.py
+
+import streamlit as st
+import pandas as pd
+import numpy as np
+import datetime
+import yfinance as yf
+
+st.set_page_config(page_title="Algoritmik Alım-Satım Paneli", layout="wide")
+st.title("📈 Algoritmik Alım-Satım ve Piyasa Tahmini Paneli")
+
+st.markdown("""
+Bu platform, Borsa İstanbul'daki hisse senetleri için **yapay zeka destekli** piyasa analizi ve al-sat sinyalleri üretir. 
+Aşağıdan hisse senedi kodunu girerek analiz başlatabilirsiniz. Örn: `GARAN.IS`, `THYAO.IS`, `AKBNK.IS`
+""")
+
+# Kullanıcıdan hisse ve tarih aralığı al
+hisse = st.text_input("Hisse Kodu (örnek: GARAN.IS)", value="GARAN.IS")
+baslangic = st.date_input("Başlangıç Tarihi", value=datetime.date(2024, 1, 1))
+bitis = st.date_input("Bitiş Tarihi", value=datetime.date.today())
+
 if st.button("Veriyi Getir"):
     try:
         veri = yf.download(hisse, start=baslangic, end=bitis)
@@ -5,16 +26,15 @@ if st.button("Veriyi Getir"):
         if veri.empty:
             st.warning("Veri çekilemedi. Lütfen hisse kodunu kontrol edin.")
         else:
-            # Fiyat sütunu kontrolü
+            # Güvenli sütun seçimi
             if "Adj Close" in veri.columns:
                 veri["Fiyat"] = veri["Adj Close"]
             elif "Close" in veri.columns:
                 veri["Fiyat"] = veri["Close"]
             else:
-                st.error("Veride kullanılabilir fiyat sütunu bulunamadı.")
+                st.error("Veride fiyat bilgisi bulunamadı.")
                 st.stop()
 
-            # Hacim varsa al
             if "Volume" in veri.columns:
                 veri["Hacim"] = veri["Volume"]
 
