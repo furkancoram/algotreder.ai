@@ -1,4 +1,4 @@
-# app.py (Gelişmiş Türkçe, Türk Hisseleri Uyumlu, TradingView Benzeri Grafik)
+# app.py (Geliştirilmiş Mum Grafik - TradingView'e Daha Yakın Görsellik)
 
 import streamlit as st
 import pandas as pd
@@ -76,13 +76,23 @@ if st.button("📥 Veriyi Çek"):
                 high=df_clean["high"],
                 low=df_clean["low"],
                 close=df_clean["Fiyat"],
-                name="Mum Grafik"
+                name="Mum Grafik",
+                increasing_line_color="limegreen",
+                decreasing_line_color="red",
+                increasing_fillcolor="rgba(0,255,0,0.6)",
+                decreasing_fillcolor="rgba(255,0,0,0.6)"
             ))
             fig.add_trace(go.Scatter(x=df_clean.index, y=df_clean["HO-8"],
                                      mode='lines', name='HO-8', line=dict(color='royalblue')))
             fig.add_trace(go.Scatter(x=df_clean.index, y=df_clean["HO-20"],
                                      mode='lines', name='HO-20', line=dict(color='orange')))
-            fig.update_layout(xaxis_rangeslider_visible=False, template="plotly_dark")
+            fig.update_layout(
+                xaxis_rangeslider_visible=False,
+                template="plotly_dark",
+                plot_bgcolor="black",
+                paper_bgcolor="black",
+                font=dict(color="white")
+            )
             st.plotly_chart(fig, use_container_width=True)
 
             st.subheader("📄 Son 30 Günlük Veriler")
